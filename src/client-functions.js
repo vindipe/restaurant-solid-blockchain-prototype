@@ -28,7 +28,7 @@ const fs = require('fs');
 const qr = require("qrcode");
 const Web3 = require("web3");
 
-const testNumber = "33";
+const testNumber = "34";
 
 const obj = {
     adminRoot : `https://pod.inrupt.com/admintest1/dev/root/`,
@@ -94,6 +94,7 @@ async function getMenu(tableNumber) {
 
     return [json, order];    
 }
+
 async function makeOrder(req, session) {  
     //get info/params for order
     var order = JSON.parse(req); 

@@ -41,16 +41,16 @@ const home = localAddress + `${port}/`;
 //const erpPassword = "";
 
 const adminToken = {
-  "refreshToken" : "fHPkcSgVOfeAeP10ONPOb10Mn0Crzm0I",
-  "clientId"     : "ks2Qvv9XzjckN5vnHFXkcecoLOl3Z3gO",
-  "clientSecret" : "bUgYURuqaojYuLd5X12PxgaLIOdbYUt7",
+  "refreshToken" : "g9oG9ek8UWZskDsj5mxKZvbYnnPAdT3VvTBvVTDwFPo",
+  "clientId"     : "Z49X5XKR04qI03Zw6NIRhiWkaeNDkZs7yawsawwL9Pk",
+  "clientSecret" : "RehiKV4cfb5NsLWTKsK8n5IMduu7DPZvrtGD90dbbcQ",
   provider : "https://broker.pod.inrupt.com"
 };
 
 const restaurantToken = {
-  "refreshToken" : "7c11a3e26124d11e20aa15f56d32e0c7",
-  "clientId"     : "928a83fd17a46580c365b6c97d16072d",
-  "clientSecret" : "eddbbfcd3ef99fe366fa15a45107257c",
+  "refreshToken" : "db034c8769ccccbc481dd5bb6cb6c80b",
+  "clientId"     : "dd2cb76b95731bb6046b5c0f123c1ba3",
+  "clientSecret" : "6a271506f4b67623909b386a7f064c85",
   provider : "https://solidcommunity.net"
 };
 
