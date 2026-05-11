@@ -42,7 +42,8 @@ const app = express();
 //-----------## Initialization Solid Pod(s) - (re)start the service as predifined
 program
   .option("-i, --initialize", "Initialize Restaurant service and Pods.")
-  .option("--solid-plan", "Print the expected Solid Pod structure without modifying anything.");
+  .option("--solid-plan", "Print the expected Solid Pod structure without modifying anything.")
+  .option("--solid-probe", "Probe expected Solid Pod URLs without modifying anything.");
 
 program.parse(process.argv);
 
@@ -118,13 +119,101 @@ function printSolidPlan() {
   console.log("");
 }
 
-const isInitCommand = options.initialize;
+async function probeUrl(label, url, expectedContentType = "") {
+  if (!url) {
+    console.log(`- ${label}: missing URL`);
+    return;
+  }
 
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow"
+    });
+
+    const contentType = response.headers.get("content-type") || "(none)";
+    const finalUrl = response.url || url;
+
+    let statusLabel = `${response.status} ${response.statusText}`;
+
+    if (expectedContentType && !contentType.includes(expectedContentType)) {
+      statusLabel += ` | unexpected content-type: ${contentType}`;
+    } else {
+      statusLabel += ` | content-type: ${contentType}`;
+    }
+
+    if (finalUrl !== url) {
+      statusLabel += ` | redirected to: ${finalUrl}`;
+    }
+
+    console.log(`- ${label}: ${statusLabel}`);
+
+    if (contentType.includes("text/html")) {
+      const body = await response.text();
+      const preview = body.slice(0, 120).replace(/\s+/g, " ");
+      console.log(`  HTML preview: ${preview}`);
+    }
+  } catch (error) {
+    console.log(`- ${label}: failed`);
+    console.log(`  ${error.message}`);
+  }
+}
+
+async function printSolidProbe() {
+  console.log("");
+  console.log("Solid Pod URL probe");
+  console.log("===================");
+  console.log("");
+  console.log("This command performs read-only GET requests.");
+  console.log("It does not create, delete, or update Pod resources.");
+  console.log("");
+
+  console.log("Containers / resources:");
+  await probeUrl("Admin root", solid.adminRoot);
+  await probeUrl("Test root", solid.root);
+  await probeUrl("Store container", solid.storeContainerURL);
+  await probeUrl("Active order container", solid.activeOrderContainerURL);
+  await probeUrl("Bills to pay container", solid.billToPayURL);
+  await probeUrl("Paid bills container", solid.billPayedURL);
+
+  console.log("");
+  console.log("JSON files:");
+  await probeUrl("Store JSON", solid.storeFileURL, "application/json");
+  await probeUrl("Order template JSON", solid.activeOrderFileURL, "application/json");
+  await probeUrl("Billing template JSON", solid.billingFileURL, "application/json");
+
+  console.log("");
+  console.log("Image files:");
+  await probeUrl("Pizza image", `${solid.storeContainerURL}pizza.jpg`, "image/");
+  await probeUrl("Water image", `${solid.storeContainerURL}water.jpg`, "image/");
+  await probeUrl("Beef image", `${solid.storeContainerURL}beef.jpg`, "image/");
+
+  console.log("");
+  console.log("Interpretation:");
+  console.log("- 200 with application/json means the JSON resource is publicly readable.");
+  console.log("- 200 with text/html usually means the URL redirected to a web page, not the expected file.");
+  console.log("- 401/403 means the resource exists or is protected but is not publicly readable.");
+  console.log("- 404 means the resource path probably does not exist.");
+  console.log("");
+}
+
+const isInitCommand = options.initialize;
 const isSolidPlanCommand = options.solidPlan;
+const isSolidProbeCommand = options.solidProbe;
 
 if (isSolidPlanCommand) {
   printSolidPlan();
   process.exit(0);
+}
+
+if (isSolidProbeCommand) {
+  printSolidProbe()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error("Solid probe failed:");
+      console.error(error.message);
+      process.exit(1);
+    });
 }
 
 if (isInitCommand) {
@@ -317,7 +406,7 @@ app.get('/end', function(req, res, next) {
 // }
 
 // portRange.forEach(function(port) {
-if (!isInitCommand && !isSolidPlanCommand) {
+if (!isInitCommand && !isSolidPlanCommand && !isSolidProbeCommand) {
   app.listen(port, function () {
     console.log(`listening on ${port}`);
   });
