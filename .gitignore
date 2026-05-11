@@ -37,3 +37,6 @@ build/
 
 # Local demo runtime data
 utils/runtime/
+
+# Local Solid planning output
+solid-plan.local.json
