@@ -17,6 +17,7 @@
   "solid:fixtures": "node scripts/solid-fixtures.js",
   "solid:export-plan": "node scripts/solid-export-plan.js",
   "solid:env": "node scripts/solid-env-check.js",
+  "solid:readiness": "npm run solid:env && npm run solid:fixtures && npm run solid:export-plan",
   "clean:runtime": "rm -rf utils/runtime",
   "doctor": "node scripts/doctor.js",
   "test:local-flow": "node scripts/test-local-flow.js",
