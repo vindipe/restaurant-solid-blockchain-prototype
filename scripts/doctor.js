@@ -185,6 +185,7 @@ function checkLegacyHardcoding() {
     "--exclude=package-lock.json " +
     "--exclude=README.md " +
     "--exclude=doctor.js " +
+    "--exclude=solid-fixtures.js " +
     "'kovan.infura\\|396DC917\\|09025260fc864cd09d057f68852e45ea\\|Administrator0\\|Ristorante1\\|Authority2' .";
 
   const matches = run(command);

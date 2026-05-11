@@ -14,6 +14,7 @@
   "solid:plan": "node restaurant.js --solid-plan",
   "solid:probe": "node restaurant.js --solid-probe",
   "solid:probe:auth": "node restaurant.js --solid-probe-auth",
+  "solid:fixtures": "node scripts/solid-fixtures.js",
   "clean:runtime": "rm -rf utils/runtime",
   "doctor": "node scripts/doctor.js",
   "test:local-flow": "node scripts/test-local-flow.js",
