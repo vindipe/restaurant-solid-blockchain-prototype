@@ -2,52 +2,76 @@
 
 ## Overview
 
-This repository contains a legacy MSc thesis prototype that implements a restaurant ordering workflow using:
+This repository contains a legacy MSc thesis prototype implementing a restaurant ordering workflow with Solid Pods and blockchain-based payment verification.
 
-- Node.js and Express for the backend
-- EJS server-rendered pages for the frontend
-- Solid Pods for menu, order and bill storage
-- PDFKit for bill generation
-- QR codes for table-specific access
-- MetaMask/Web3 for Ethereum-based payment interaction
-- A Solidity smart contract for storing and verifying payment-related order data
+The original prototype was built as a research/demo artifact, not as a production-ready restaurant application. The repository has now been partially modernized so that the core demo can run locally without requiring a working Solid Pod, MetaMask, or a live blockchain network.
 
-The project is preserved and modernized as an educational and research artifact. It is not production-ready in its original form.
+The current local demo supports:
+
+- table-based access
+- restaurant menu rendering
+- local order creation
+- local inventory/runtime update
+- pre-payment bill PDF generation
+- mock payment completion
+- final paid bill PDF generation
+- downloadable bill PDF
+
+The Solid Pod and blockchain integrations are preserved conceptually and structurally, but the default execution mode is now local/mock to make the repository easier to run, test, and understand.
 
 ## Project context
 
-The original goal was to demonstrate how a restaurant workflow could be implemented with decentralized data storage and blockchain-based payment verification.
+The original goal was to demonstrate how a restaurant workflow could combine decentralized data storage and blockchain-based payment verification.
 
-At a high level, the prototype models this flow:
+At a high level, the intended full architecture is:
 
-1. A customer scans a QR code associated with a restaurant table.
-2. The app loads the restaurant menu from a Solid Pod.
-3. The customer creates or updates an order.
-4. The active order is stored in the Solid Pod.
+1. A customer opens a table-specific URL.
+2. The app loads a restaurant menu.
+3. The customer creates an order.
+4. The order is stored as structured data.
 5. The customer requests the bill.
 6. The app generates a pre-payment PDF bill.
-7. The customer pays through MetaMask.
-8. The app checks the blockchain transaction / contract state.
-9. The final paid bill is generated and stored in the Solid Pod.
+7. The customer pays.
+8. The app verifies the payment.
+9. The final paid bill is generated and made available for download.
 
-## Legacy status
+The legacy version used Solid Pods for shared data storage and Ethereum/Web3 for payment verification. The modernized local mode simulates the same workflow using local runtime files and a mock payment step.
 
-This project was originally developed around 2021-2022 and reflects the tools and assumptions available at that time.
+## Current status
+
+The repository currently supports two conceptual modes.
+
+### Local demo mode
+
+This is the default and currently recommended mode.
+
+It does not require:
+
+- Solid Pod credentials
+- MetaMask
+- Infura
+- Sepolia ETH
+- deployed smart contracts
+
+It uses:
+
+- local fixture files from `utils/`
+- generated runtime files under `utils/runtime/`
+- mock payment completion through `PAYMENT_MODE=mock`
+
+### Solid/blockchain mode
+
+The original Solid and blockchain integration code is still present, but it requires additional modernization and reconfiguration before it should be considered usable.
 
 Known legacy aspects include:
 
-- Node.js 14 runtime originally used
-- Kovan Ethereum testnet originally used
-- Manual MetaMask interaction from the browser
-- Solid Pod URLs and WebIDs originally hardcoded
-- Ethereum RPC endpoint, contract address and wallet address originally hardcoded
-- Demo-style global server state
-- No automated test suite
-- Limited error handling
-- Server-side trust in client-submitted order data
-- Initialization flow tied to an existing Solid Pod structure
-
-The current modernization work aims to preserve the original research idea while making the repository safer, clearer and easier to run.
+- old Solid Pod assumptions and hardcoded historical structure
+- legacy refresh-token based Solid authentication
+- old Kovan-oriented Ethereum flow
+- old MetaMask/Web3 assumptions
+- demo-style server state
+- limited automated testing
+- limited validation and error handling
 
 ## Repository structure
 
@@ -57,12 +81,15 @@ The current modernization work aims to preserve the original research idea while
 |   Main Express server entry point.
 |
 |-- src/
+|   |-- config.js
+|   |   Centralized configuration loaded from environment variables.
+|   |
 |   |-- client-functions.js
-|   |   Business logic for menu loading, order creation, bill creation,
-|   |   Solid Pod updates and payment verification.
+|   |   Main business logic for menu loading, order creation, store update,
+|   |   bill generation, payment handling, and local demo fallback.
 |   |
 |   |-- solid-lib-interface.js
-|   |   Helper functions wrapping Inrupt Solid client operations.
+|   |   Helper functions wrapping Solid client operations.
 |   |
 |   |-- pdf-kit-ext.js
 |       PDFKit table helper extension.
@@ -84,66 +111,204 @@ The current modernization work aims to preserve the original research idea while
 |   |-- bill-temp.json
 |   |-- smart-contract.sol
 |   |-- img/
-|       Sample data, contract source and local image assets.
+|       Fixture data, images, and legacy smart contract source.
 |
 |-- .env.example
 |   Example environment configuration.
 |
 |-- .gitignore
-|   Ignore rules for dependencies, secrets and generated files.
+|   Ignore rules for secrets, dependencies, generated files, and runtime data.
 ```
 
 ## Requirements
 
-Recommended modern setup:
+Recommended local setup:
 
 ```bash
 node --version
 npm --version
 ```
 
-Use Node.js 24 LTS or newer where possible.
+The current tested environment is:
 
-You also need:
+```text
+Node.js 18.x
+npm 9.x
+```
 
-- npm
-- a Solid Pod provider / account setup
-- refresh-token credentials for the Solid accounts used by the app
-- MetaMask or another EIP-1193-compatible wallet
-- an Ethereum RPC endpoint
-- a deployed copy of the smart contract, or a local test chain such as Hardhat
+The project should also be compatible with newer Node/npm versions, but the legacy dependencies may require careful updates.
 
-## Setup
+## Installation
 
-Clone the repository and install dependencies:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-Create a local environment file:
+Create your local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Then fill the values in `.env`.
-
 Never commit `.env`.
 
-## Environment variables
+## Environment configuration
 
-The repository should use environment variables for all sensitive or deployment-specific configuration.
-
-Expected variables:
+For the local demo, use:
 
 ```env
 PORT=8080
 BASE_URL=http://localhost:8080
 TABLE_COUNT=4
 
-SOLID_ROOT_CONTEXT=testing/root1
-SOLID_TEST_NUMBER=1
+USE_LOCAL_DATA_FALLBACK=true
+SOLID_AUTH_ENABLED=false
+PAYMENT_MODE=mock
+```
+
+These values mean:
+
+- `USE_LOCAL_DATA_FALLBACK=true`: use local fixture/runtime files when Solid is unavailable.
+- `SOLID_AUTH_ENABLED=false`: do not attempt Solid authentication.
+- `PAYMENT_MODE=mock`: complete payment locally without MetaMask/blockchain.
+
+The `.env.example` file also contains placeholders for Solid and Ethereum configuration, but they are not required for the local demo.
+
+## Running the local demo
+
+Start the server:
+
+```bash
+npm start
+```
+
+Open:
+
+```text
+http://localhost:8080/
+```
+
+Or directly open a table:
+
+```text
+http://localhost:8080/1
+http://localhost:8080/2
+http://localhost:8080/3
+http://localhost:8080/4
+```
+
+## Local demo flow
+
+Use this flow to test the project:
+
+1. Open `http://localhost:8080/1`.
+2. Select one or more products.
+3. Open the cart.
+4. Click `Order`.
+5. Return to the table page if needed.
+6. Click `Get Bill`.
+7. Click `Complete Mock Payment`.
+8. Download the final paid bill PDF.
+9. Click `Back to Table`.
+
+Expected terminal output includes messages similar to:
+
+```text
+Local demo mode enabled. Loading menu and order from local runtime files.
+Local order saved: ./utils/runtime/activeorder/order-table-1.json
+Local store updated: ./utils/runtime/store.json
+Local pre-bill PDF generated: ./utils/runtime/billing/to-pay/<hash>.pdf
+Mock payment executed.
+Local paid bill PDF generated: ./utils/runtime/billing/payed/<hash>.pdf
+```
+
+## Cleaning local runtime data
+
+The local demo creates runtime files under:
+
+```text
+utils/runtime/
+```
+
+These files are generated and should not be committed.
+
+To clean the local demo state:
+
+```bash
+npm run clean:runtime
+```
+
+Then restart the app:
+
+```bash
+npm start
+```
+
+## Generated files
+
+The following files/directories are generated at runtime and ignored by Git:
+
+```text
+utils/runtime/
+utils/temp.pdf
+utils/temp.json
+utils/img/QR-tables/*.png
+```
+
+The repository keeps only:
+
+```text
+utils/img/QR-tables/.gitkeep
+```
+
+so that the QR table directory exists without tracking generated QR images.
+
+## Available npm scripts
+
+```bash
+npm start
+```
+
+Start the Express server.
+
+```bash
+npm run dev
+```
+
+Start the server with Nodemon.
+
+```bash
+npm run init:pods
+```
+
+Run the legacy Solid Pod initialization flow.
+
+Warning: this flow still requires review and valid Solid credentials before use.
+
+```bash
+npm run clean:runtime
+```
+
+Delete generated local demo runtime files.
+
+```bash
+npm test
+```
+
+Placeholder test command.
+
+## Solid Pod integration
+
+The original project was designed around Solid Pods. The current local demo does not require Solid.
+
+Solid-related environment variables include:
+
+```env
+SOLID_ROOT_CONTEXT=
+SOLID_TEST_NUMBER=
+ADMIN_POD_BASE_URL=
 
 ADMIN_SOLID_PROVIDER=
 ADMIN_SOLID_REFRESH_TOKEN=
@@ -155,13 +320,42 @@ RESTAURANT_SOLID_REFRESH_TOKEN=
 RESTAURANT_SOLID_CLIENT_ID=
 RESTAURANT_SOLID_CLIENT_SECRET=
 
-ADMIN_POD_BASE_URL=
+RESTAURANT_INRUPT_WEB_ID=
 RESTAURANT_WEB_ID=
 CEO_WEB_ID=
 AUTHORITY_WEB_ID=
 ERP_WEB_ID=
 ADMIN_WEB_ID=
+```
 
+To re-enable Solid authentication in the future:
+
+```env
+SOLID_AUTH_ENABLED=true
+```
+
+However, the Solid flow should be reviewed before use. In particular:
+
+- verify the target Pod URL
+- verify container creation logic
+- verify access-control policies
+- verify refresh-token credentials
+- avoid pointing initialization to data that should not be deleted or overwritten
+
+## Payment modes
+
+The current recommended payment mode is:
+
+```env
+PAYMENT_MODE=mock
+```
+
+This completes the payment flow locally and generates a final paid bill PDF.
+
+A future blockchain mode can be configured through:
+
+```env
+PAYMENT_MODE=blockchain
 ETH_NETWORK=sepolia
 ETH_RPC_URL=
 SMART_CONTRACT_ADDRESS=
@@ -169,199 +363,97 @@ RESTAURANT_WALLET_ADDRESS=
 ETH_CHF_RATE=3919
 ```
 
-## Running the app
-
-Start the server:
-
-```bash
-npm start
-```
-
-Open one of the table routes:
-
-```text
-http://localhost:8080/1
-http://localhost:8080/2
-http://localhost:8080/3
-http://localhost:8080/4
-```
-
-The application is table-based. Each route represents one restaurant table.
-
-## Initializing the Solid Pod structure
-
-The original project includes an initialization command that creates the Solid Pod containers, uploads the menu and template files, and configures access rules.
-
-Use:
-
-```bash
-npm run init:pods
-```
-
-or, in the original version:
-
-```bash
-node restaurant.js --initialize
-```
-
-This step requires valid Solid credentials and a Pod structure matching the environment variables.
-
-Important: initialization may delete and recreate the configured test container. Do not point this command to a Pod area containing data you want to preserve.
-
-## Main user flow
-
-### 1. Open a table page
-
-The customer opens:
-
-```text
-http://localhost:8080/<table-number>
-```
-
-Example:
-
-```text
-http://localhost:8080/1
-```
-
-The backend loads:
-
-- the public restaurant menu from the Solid Pod
-- the active order for the selected table, if it exists
-- otherwise, the empty order template
-
-### 2. Create or update the order
-
-The customer selects products and submits the order.
-
-The app:
-
-- calculates quantities and totals
-- stores the active order as JSON in the Solid Pod
-- updates the store inventory file
-
-### 3. Request the bill
-
-The customer clicks the bill action.
-
-The app:
-
-- reads the active order from the Solid Pod
-- verifies the order hash
-- creates a pre-payment PDF bill
-- uploads the pre-payment PDF to the Solid Pod
-
-### 4. Pay through MetaMask
-
-The customer confirms a blockchain payment in the browser wallet.
-
-The original implementation used a legacy MetaMask/Web3 flow. The modernized version should use:
-
-```js
-await window.ethereum.request({ method: "eth_requestAccounts" });
-```
-
-### 5. Verify payment and generate final bill
-
-The backend checks whether the payment data is present on-chain.
-
-If verified, it:
-
-- deletes the active order
-- marks the bill as paid
-- generates a final bill PDF
-- creates a QR code pointing to the paid bill
-- uploads the final bill to the Solid Pod
+The blockchain mode still requires additional modernization before it should be treated as functional.
 
 ## Security and publication checklist
 
-Before publishing this repository, verify that:
+Before publishing or pushing the repository, verify that:
 
-- no real refresh tokens are committed
-- no real client secrets are committed
+- `.env` is not tracked
+- no refresh tokens are committed
+- no client secrets are committed
+- no Infura/RPC project IDs are hardcoded
 - no private Solid Pod URLs are exposed unless intentionally public
-- no private wallet addresses are exposed unless intentionally public
-- no Infura or RPC project IDs are hardcoded
-- `.env` is ignored
+- no private wallet keys are included
 - generated PDFs are ignored
-- generated QR codes are ignored
-- temporary JSON files are ignored
-- Windows metadata files such as `*:Zone.Identifier` are removed
-- the README clearly states that this is a legacy educational prototype
+- generated QR images are ignored
+- runtime JSON files are ignored
+- Dropbox metadata files are removed
+- Windows `Zone.Identifier` files are removed
+- the local demo still runs from a clean checkout
+
+Useful checks:
+
+```bash
+git check-ignore -v .env
+```
+
+```bash
+git ls-files | grep -E '(^\.env$|utils/runtime|utils/temp|QR-tables/.*\.png|dropbox|Zone.Identifier)'
+```
+
+```bash
+grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=utils/runtime --exclude=package-lock.json \
+  "kovan.infura\|396DC917\|09025260fc864cd09d057f68852e45ea\|Administrator0\|Ristorante1\|Authority2" .
+```
+
+The first command should confirm that `.env` is ignored. The second and third commands should ideally produce no output.
 
 ## Known limitations
 
-This repository is a prototype and currently has several limitations:
+This project remains a legacy prototype.
 
-- It uses demo-style global server state.
-- Concurrent users/tables may interfere with one another in the legacy implementation.
-- The original payment flow depends on manual MetaMask confirmation.
-- The original Ethereum integration targeted Kovan, which is deprecated.
-- Server-side validation of submitted order data is incomplete.
-- The order hash is a simple JavaScript hash and should not be considered cryptographically secure.
-- The app has limited automated testing.
-- The Solid Pod initialization flow assumes specific accounts and access-control policies.
+Current limitations include:
+
+- demo-style server state
+- no database
+- no automated test suite
+- limited server-side validation
+- local runtime files are not suitable for production persistence
+- mock payment does not represent a real blockchain transaction
+- Solid initialization still needs review
+- blockchain payment mode still needs modernization
+- the order hash is a simple legacy JavaScript hash and should not be considered strong cryptographic protection
 
 ## Recommended modernization roadmap
 
-### Step 1 - Safe public release
+### Completed in the current modernization pass
 
-- remove hardcoded credentials
-- move configuration to `.env`
-- update `.gitignore`
-- add `.env.example`
-- add this README
-- document legacy limitations
+- added README documentation
+- added `.env.example`
+- added centralized `src/config.js`
+- moved configuration toward environment variables
+- added local demo fallback
+- added mock payment mode
+- added local runtime storage
+- generated local pre-payment and paid bill PDFs
+- removed tracked temporary PDF/JSON files
+- removed tracked generated QR images
+- added `.gitignore` rules for runtime/generated files
+- added `.gitattributes`
+- removed legacy Kovan/contract hardcoding from active payment verification path
 
-### Step 2 - Make the demo runnable again
+### Next recommended steps
 
-- add `dotenv`
-- update `package.json` scripts
-- add `npm run init:pods`
-- make `BASE_URL`, table count and QR-code URL configurable
-- replace Kovan RPC with configurable `ETH_RPC_URL`
-- replace hardcoded contract and wallet addresses
-- update MetaMask connection to `eth_requestAccounts`
+1. Improve README and inline code comments further.
+2. Add a clean local testing checklist.
+3. Refactor global server state into table-scoped state.
+4. Add basic automated tests for local order and bill generation.
+5. Rebuild the Solid Pod initialization flow safely.
+6. Add a documented Solid demo mode.
+7. Add a local Hardhat blockchain mode.
+8. Replace the legacy JavaScript hash with a SHA-256 based identifier.
+9. Separate frontend JavaScript from EJS templates.
+10. Improve UI and error messages.
 
-### Step 3 - Improve architecture
+## Academic context
 
-- move frontend JavaScript out of EJS templates
-- replace global server state with table-scoped state
-- validate orders server-side
-- add better error handling
-- add test fixtures for local demo mode
+This repository is preserved as a legacy MSc thesis prototype exploring decentralized data storage and blockchain-based payment verification in a restaurant workflow.
 
-### Step 4 - Add local blockchain mode
-
-- add Hardhat
-- add contract deployment script
-- add local network instructions
-- allow the full payment demo to run without relying on external testnets
-
-### Step 5 - Improve Solid developer experience
-
-- add a dry-run mode
-- add safer initialization
-- avoid deleting Pod containers unless explicitly confirmed
-- document the Solid container structure
-- document required WebIDs and permissions
+Add thesis title, institution, year, and author information here before publication if desired.
 
 ## License
 
-Add the intended license before publishing.
+This repository currently uses the license declared in `package.json`.
 
-Recommended options:
-
-- MIT for a permissive software artifact
-- Apache-2.0 for a permissive license with explicit patent language
-- no license initially if you do not yet want to grant reuse rights
-
-## Citation / academic context
-
-If this repository is linked to an MSc thesis or academic demonstration, add the thesis title, university, year and author information here.
-
-Example:
-
-```text
-Developed as part of an MSc thesis prototype on decentralized data storage and blockchain-based payment verification.
-```
+Review and confirm the intended license before publication.
