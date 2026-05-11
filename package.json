@@ -13,6 +13,7 @@
   "init:pods": "node restaurant.js --initialize",
   "solid:plan": "node restaurant.js --solid-plan",
   "solid:probe": "node restaurant.js --solid-probe",
+  "solid:probe:auth": "node restaurant.js --solid-probe-auth",
   "clean:runtime": "rm -rf utils/runtime",
   "test": "echo \"No automated tests yet\" && exit 0"
 },

@@ -43,7 +43,8 @@ const app = express();
 program
   .option("-i, --initialize", "Initialize Restaurant service and Pods.")
   .option("--solid-plan", "Print the expected Solid Pod structure without modifying anything.")
-  .option("--solid-probe", "Probe expected Solid Pod URLs without modifying anything.");
+  .option("--solid-probe", "Probe expected Solid Pod URLs without modifying anything.")
+  .option("--solid-probe-auth", "Probe expected Solid Pod URLs using authenticated admin fetch.");
 
 program.parse(process.argv);
 
@@ -119,17 +120,17 @@ function printSolidPlan() {
   console.log("");
 }
 
-async function probeUrl(label, url, expectedContentType = "") {
+async function probeUrl(label, url, expectedContentType = "", fetchImpl = fetch) {
   if (!url) {
     console.log(`- ${label}: missing URL`);
     return;
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      redirect: "follow"
-    });
+const response = await fetchImpl(url, {
+  method: "GET",
+  redirect: "follow"
+});
 
     const contentType = response.headers.get("content-type") || "(none)";
     const finalUrl = response.url || url;
@@ -161,34 +162,35 @@ if (expectedContentType && !contentType.includes(expectedContentType)) {
   }
 }
 
-async function printSolidProbe() {
+async function printSolidProbe(fetchImpl = fetch, mode = "public") {
   console.log("");
   console.log("Solid Pod URL probe");
   console.log("===================");
+  console.log(`Mode: ${mode}`);
   console.log("");
   console.log("This command performs read-only GET requests.");
   console.log("It does not create, delete, or update Pod resources.");
   console.log("");
 
   console.log("Containers / resources:");
-  await probeUrl("Admin root", solid.adminRoot);
-  await probeUrl("Test root", solid.root);
-  await probeUrl("Store container", solid.storeContainerURL);
-  await probeUrl("Active order container", solid.activeOrderContainerURL);
-  await probeUrl("Bills to pay container", solid.billToPayURL);
-  await probeUrl("Paid bills container", solid.billPayedURL);
+  await probeUrl("Admin root", solid.adminRoot, "", fetchImpl);
+  await probeUrl("Test root", solid.root, "", fetchImpl);
+  await probeUrl("Store container", solid.storeContainerURL, "", fetchImpl);
+  await probeUrl("Active order container", solid.activeOrderContainerURL, "", fetchImpl);
+  await probeUrl("Bills to pay container", solid.billToPayURL, "", fetchImpl);
+  await probeUrl("Paid bills container", solid.billPayedURL, "", fetchImpl);
 
   console.log("");
   console.log("JSON files:");
-  await probeUrl("Store JSON", solid.storeFileURL, "application/json");
-  await probeUrl("Order template JSON", solid.activeOrderFileURL, "application/json");
-  await probeUrl("Billing template JSON", solid.billingFileURL, "application/json");
+await probeUrl("Store JSON", solid.storeFileURL, "application/json", fetchImpl);
+await probeUrl("Order template JSON", solid.activeOrderFileURL, "application/json", fetchImpl);
+await probeUrl("Billing template JSON", solid.billingFileURL, "application/json", fetchImpl);
 
   console.log("");
   console.log("Image files:");
-  await probeUrl("Pizza image", `${solid.storeContainerURL}pizza.jpg`, "image/");
-  await probeUrl("Water image", `${solid.storeContainerURL}water.jpg`, "image/");
-  await probeUrl("Beef image", `${solid.storeContainerURL}beef.jpg`, "image/");
+await probeUrl("Pizza image", `${solid.storeContainerURL}pizza.jpg`, "image/", fetchImpl);
+await probeUrl("Water image", `${solid.storeContainerURL}water.jpg`, "image/", fetchImpl);
+await probeUrl("Beef image", `${solid.storeContainerURL}beef.jpg`, "image/", fetchImpl);
 
   console.log("");
   console.log("Interpretation:");
@@ -199,9 +201,35 @@ async function printSolidProbe() {
   console.log("");
 }
 
+async function printAuthenticatedSolidProbe() {
+  console.log("");
+  console.log("Authenticated Solid Pod URL probe");
+  console.log("=================================");
+  console.log("");
+
+  if (!adminToken.refreshToken || !adminToken.clientId || !adminToken.clientSecret || !adminToken.provider) {
+    throw new Error(
+      "Missing admin Solid credentials. Check ADMIN_SOLID_PROVIDER, " +
+      "ADMIN_SOLID_REFRESH_TOKEN, ADMIN_SOLID_CLIENT_ID and ADMIN_SOLID_CLIENT_SECRET in .env."
+    );
+  }
+
+  console.log("Logging in as Solid admin for read-only probe...");
+  const session = await login("AdminProbe-", adminToken);
+
+  if (!session || !session.info || !session.info.isLoggedIn) {
+    throw new Error("Solid admin login failed.");
+  }
+
+  console.log("Logged in as:", session.info.webId);
+
+  await printSolidProbe(session.fetch, "authenticated admin");
+}
+
 const isInitCommand = options.initialize;
 const isSolidPlanCommand = options.solidPlan;
 const isSolidProbeCommand = options.solidProbe;
+const isSolidProbeAuthCommand = options.solidProbeAuth;
 
 if (isSolidPlanCommand) {
   printSolidPlan();
@@ -213,6 +241,16 @@ if (isSolidProbeCommand) {
     .then(() => process.exit(0))
     .catch((error) => {
       console.error("Solid probe failed:");
+      console.error(error.message);
+      process.exit(1);
+    });
+}
+
+if (isSolidProbeAuthCommand) {
+  printAuthenticatedSolidProbe()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error("Authenticated Solid probe failed:");
       console.error(error.message);
       process.exit(1);
     });
@@ -408,7 +446,7 @@ app.get('/end', function(req, res, next) {
 // }
 
 // portRange.forEach(function(port) {
-if (!isInitCommand && !isSolidPlanCommand && !isSolidProbeCommand) {
+if (!isInitCommand && !isSolidPlanCommand && !isSolidProbeCommand && !isSolidProbeAuthCommand) {
   app.listen(port, function () {
     console.log(`listening on ${port}`);
   });
