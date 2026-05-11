@@ -267,6 +267,7 @@ async function takeBill(table, session) {
 
         const bill = readLocalJson(obj.billingFilePath);
         bill["order"] = order;
+        bill["addressSmartContract"] = ethereum.smartContractAddress || "";
 
         var today = new Date();
         var date = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
@@ -298,6 +299,7 @@ async function takeBill(table, session) {
 
     var bill = await readFileFromPod(obj.billingFileURL, session);
     bill["order"] = order;
+    bill["addressSmartContract"] = ethereum.smartContractAddress || "";
 
     var today = new Date();
     var date = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
@@ -404,116 +406,23 @@ async function getPayment(bill, session) {
     return [true, bill.src];
 }
 
-async function checkPayment(hashOrder, transactionID){
-
-    try {
-        // Instantiate web3 with HttpProvider
-        var web3 = new Web3(`https://kovan.infura.io/v3/09025260fc864cd09d057f68852e45ea`);        
-
-        //################################ Contract Case #################################à
-        var ERC20ABI = [
-            {
-                "inputs": [],
-                "stateMutability": "nonpayable",
-                "type": "constructor"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "amount",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "_orderHash",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "_data",
-                        "type": "string"
-                    }
-                ],
-                "name": "forwardPayment",
-                "outputs": [],
-                "stateMutability": "payable",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "string",
-                        "name": "_orderHash",
-                        "type": "string"
-                    }
-                ],
-                "name": "getData",
-                "outputs": [
-                    {
-                        "internalType": "string",
-                        "name": "data",
-                        "type": "string"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "stateMutability": "payable",
-                "type": "receive"
-            }
-        ];
-        var instanceContract = new web3.eth.Contract(ERC20ABI, "0x396DC917E64909Dfd3081FE1Ac461c14b87Dc6a8");
-        await instanceContract.methods
-            .getData(hashOrder.toString())
-            .call({ from: "0x684F22798FEf8dDcaCB8278447703787293cEe07" }, function (err, res) {
-                if (err) {
-                    console.log("An error occured", err)
-                    return
-                }
-                // return JSON.parse(res).order.hash.toString() == hashOrder.toString();
-                return res.toString() != "";
-            });
-
-        //################################ Transaction Case #################################à
-        /**
-        const trx = await web3.eth.getTransaction(transactionID);
-
-        console.log("TRX : ", trx.input);
-
-        // Get current block number
-        const currentBlock = await web3.eth.getBlockNumber();
-
-        // When transaction is unconfirmed, its block number is null.
-        // In this case we return 0 as number of confirmations
-        let trxConfirmations;
-        if (trx.blockNumber === null)
-            trxConfirmations = 0;
-        else 
-            trxConfirmations = currentBlock - trx.blockNumber;
-
-        // Get current number of confirmations and compare it with sought-for value
-
-        console.log('Transaction with hash ' + transactionID + ' has ' + trxConfirmations + ' confirmation(s)')
-
-        if (trxConfirmations >= 2) {
-            // Handle confirmation event according to your business logic
-            
-            console.log('Transaction with hash ' + transactionID + ' has been successfully confirmed')
-
-            if(web3.hexToAscii(trx.input) == hashOrder)
-                return true;
-            else
-                console.log("The transaction does not contain the correct order hash!");
-        };
-
-        return false;  
-        */    
+async function checkPayment(hashOrder, idTransaction) {
+    if (!ethereum.rpcUrl) {
+        throw new Error("Missing ETH_RPC_URL in .env. Cannot verify blockchain payment.");
     }
-    catch (error) {
-        console.log(error)
-    };
+
+    if (!ethereum.smartContractAddress) {
+        throw new Error("Missing SMART_CONTRACT_ADDRESS in .env. Cannot verify blockchain payment.");
+    }
+
+    var web3 = new Web3(ethereum.rpcUrl);
+    var instanceContract = new web3.eth.Contract(ERC20ABI, ethereum.smartContractAddress);
+
+    const result = await instanceContract.methods
+        .getData(hashOrder.toString())
+        .call();
+
+    return result.toString() !== "";
 }
 
 function makePreBillPDF(bill, outputPath = "./utils/temp.pdf") {
