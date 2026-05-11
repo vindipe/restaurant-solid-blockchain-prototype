@@ -27,35 +27,16 @@ const PDFDocument = require('./pdf-kit-ext');
 const fs = require('fs');
 const qr = require("qrcode");
 const Web3 = require("web3");
+const {
+    solid,
+    ethereum,
+    baseUrl,
+    useLocalDataFallback,
+    solidAuthEnabled,
+    paymentMode
+} = require("./config");
 
-const testNumber = "34";
-
-const obj = {
-    adminRoot : `https://pod.inrupt.com/admintest1/dev/root/`,
-    root : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/`,
-    acp : `https://pod.inrupt.com/admintest1/dev/root/acp/myrulesandpolicies`,
-
-    storeContainerURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/store/`,
-    billToPayURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/billing/to-pay/`,
-    billPayedURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/billing/payed/`,
-    activeOrderContainerURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/activeorder/`,
-
-    storeFileURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/store/store.json`,
-    billingFileURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/billing/to-pay/bill-temp.json`,
-    activeOrderFileURL : `https://pod.inrupt.com/admintest1/dev/root/test${testNumber}/activeorder/order-temp.json`,
-
-    storeFilePath : "./utils/store.json",
-    billingFilePath : "./utils/bill-temp.json",
-    activeOrderFilePath : "./utils/order-temp.json",
-    
-    restaurantInruptWebID : "https://pod.inrupt.com/ristorante1/profile/card#me",
-    restaurantWebID : "https://ristorante1.solidcommunity.net/profile/card#me",
-    CEOWebID : "https://restaurantCEO.solidcommunity.net/profile/card#me",
-    authorityWebID : "https://pod.inrupt.com/authoritycheck/profile/card#me",
-    erpWebID : "https://pod.inrupt.com/erp/profile/card#me",
-    adminWebID : "https://pod.inrupt.com/admintest1/profile/card#me"
-};
-
+const obj = solid;
 
 //FUNCTION
 /**
@@ -72,8 +53,89 @@ function hashCode(y) {
     return hash;
 };
 
+function computeOrderHash(order) {
+    const tmpOrder = JSON.parse(JSON.stringify(order));
+    tmpOrder.hash = "";
+    return hashCode(JSON.stringify(tmpOrder));
+}
+
+function isOrderHashValid(order) {
+    return computeOrderHash(order) === order.hash;
+}
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function readLocalJson(filePath) {
+    const raw = fs.readFileSync(filePath, "utf8");
+    return JSON.parse(raw);
+}
+
+function rewriteMenuImagesToLocal(menu) {
+    if (!menu || !Array.isArray(menu.products)) {
+        return menu;
+    }
+
+    menu.products = menu.products.map((product) => {
+        if (!product.image) {
+            return product;
+        }
+
+        const filename = product.image.split("/").pop();
+
+        return {
+            ...product,
+            image: `/img/${filename}`
+        };
+    });
+
+    return menu;
+}
+
+const localRuntimeRoot = "./utils/runtime";
+const localActiveOrderDir = `${localRuntimeRoot}/activeorder`;
+const localBillingToPayDir = `${localRuntimeRoot}/billing/to-pay`;
+const localBillingPayedDir = `${localRuntimeRoot}/billing/payed`;
+const localQrDir = `${localRuntimeRoot}/qr`;
+const localStoreFilePath = `${localRuntimeRoot}/store.json`;
+
+function ensureLocalRuntime() {
+    fs.mkdirSync(localActiveOrderDir, { recursive: true });
+    fs.mkdirSync(localBillingToPayDir, { recursive: true });
+    fs.mkdirSync(localBillingPayedDir, { recursive: true });
+    fs.mkdirSync(localQrDir, { recursive: true });
+
+    if (!fs.existsSync(localStoreFilePath)) {
+        fs.copyFileSync(obj.storeFilePath, localStoreFilePath);
+    }
+}
+
+function getLocalActiveOrderPath(tableNumber) {
+    return `${localActiveOrderDir}/order-table-${tableNumber}.json`;
+}
+
+function writeLocalJson(filePath, data) {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+}
+
+function readLocalStore() {
+    ensureLocalRuntime();
+
+    const store = readLocalJson(localStoreFilePath);
+    return rewriteMenuImagesToLocal(store);
+}
+
+function readLocalOrder(tableNumber) {
+    ensureLocalRuntime();
+
+    const activeOrderPath = getLocalActiveOrderPath(tableNumber);
+
+    if (fs.existsSync(activeOrderPath)) {
+        return readLocalJson(activeOrderPath);
+    }
+
+    return readLocalJson(obj.activeOrderFilePath);
 }
 
 async function login(sessionID, token){    
@@ -86,132 +148,260 @@ function logout(session){
 }
 
 async function getMenu(tableNumber) {
-    //get the resources for the menù
-    var json = await readPublicFileFromPod(obj.storeFileURL);
-    var order = await readPublicFileFromPod(obj.activeOrderContainerURL+`order-table-${tableNumber}.json`);
-    if (order == undefined)
-        order = await readPublicFileFromPod(obj.activeOrderFileURL);
+    if (!solidAuthEnabled && useLocalDataFallback) {
+        console.log("Local demo mode enabled. Loading menu and order from local runtime files.");
 
-    return [json, order];    
+        const json = readLocalStore();
+        const order = readLocalOrder(tableNumber);
+
+        return [json, order];
+    }
+
+    console.log("Loading menu from Solid Pod:");
+    console.log("Store file:", obj.storeFileURL);
+    console.log("Active order:", obj.activeOrderContainerURL + `order-table-${tableNumber}.json`);
+    console.log("Order template:", obj.activeOrderFileURL);
+
+    var json = await readPublicFileFromPod(obj.storeFileURL);
+
+    if (json == undefined) {
+        if (!useLocalDataFallback) {
+            throw new Error(
+                "Unable to load store.json from Solid Pod. " +
+                "Check ADMIN_POD_BASE_URL, SOLID_ROOT_CONTEXT, SOLID_TEST_NUMBER and public read permissions."
+            );
+        }
+
+        console.warn("Solid store.json unavailable. Falling back to local utils/store.json.");
+        json = readLocalStore();
+    }
+
+    var order = await readPublicFileFromPod(obj.activeOrderContainerURL + `order-table-${tableNumber}.json`);
+
+    if (order == undefined) {
+        order = await readPublicFileFromPod(obj.activeOrderFileURL);
+    }
+
+    if (order == undefined) {
+        if (!useLocalDataFallback) {
+            throw new Error(
+                "Unable to load order template from Solid Pod. " +
+                "Check activeorder/order-temp.json and public read permissions."
+            );
+        }
+
+        console.warn("Solid order template unavailable. Falling back to local utils/order-temp.json.");
+        order = readLocalOrder(tableNumber);
+    }
+
+    return [json, order];
 }
 
 async function makeOrder(req, session) {  
-    //get info/params for order
     var order = JSON.parse(req); 
 
-    if(order["id_order"] == "orderID"){
+    if (order["id_order"] == "orderID") {
         let orderID = "order-";
         orderID += Math.random().toString(36).substr(2, 9);
         order["id_order"] = orderID;
     }
 
     var today = new Date();
-    var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+    var date = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
     var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-    var result = date+'-'+time;
+    var result = date + "-" + time;
     order["time"] = result;
 
     var total = 0;
-    Object.keys(order.products).forEach(function(k){
+    Object.keys(order.products).forEach(function(k) {
         order.products[k].amount = order.products[k].quantity * order.products[k].price_per_unit;
         total += order.products[k].amount;
     });   
+
     order["total"] = total;
 
-    //insert as file .json
-    var table = order.table_number.toString();
-    order = JSON.stringify(order);
-    await uploadJSON(order, obj.activeOrderContainerURL, `order-table-${table}.json`, session);
-    await createResourceSpecificPublicRulesPolicies(obj.activeOrderContainerURL+`order-table-${table}.json`, "activeOrder", { read:true }, session);
+    order.hash = "";
+    order.hash = computeOrderHash(order);
 
-    return JSON.parse(order);
+    var table = order.table_number.toString();
+    const orderString = JSON.stringify(order, null, 2);
+
+    if (!solidAuthEnabled && useLocalDataFallback) {
+        ensureLocalRuntime();
+
+        const localOrderPath = getLocalActiveOrderPath(table);
+        fs.writeFileSync(localOrderPath, orderString, "utf8");
+
+        console.log(`Local order saved: ${localOrderPath}`);
+
+        return order;
+    }
+
+    await uploadJSON(JSON.stringify(order), obj.activeOrderContainerURL, `order-table-${table}.json`, session);
+    await createResourceSpecificPublicRulesPolicies(
+        obj.activeOrderContainerURL + `order-table-${table}.json`,
+        "activeOrder",
+        { read: true },
+        session
+    );
+
+    return order;
 }
 
-async function takeBill(table, session) {     //(orderID, session)
-    //delete the order from ActiveOrder   
+async function takeBill(table, session) {
+    if (!solidAuthEnabled && useLocalDataFallback) {
+        ensureLocalRuntime();
+
+        const localOrderPath = getLocalActiveOrderPath(table);
+
+        if (!fs.existsSync(localOrderPath)) {
+            throw new Error(`No active local order found for table ${table}. Click Order before Get Bill.`);
+        }
+
+        const order = readLocalJson(localOrderPath);
+
+        if (!isOrderHashValid(order)) {
+            console.log("Your hash seems to not correspond to the order.");
+            return false;
+        }
+
+        const bill = readLocalJson(obj.billingFilePath);
+        bill["order"] = order;
+
+        var today = new Date();
+        var date = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
+        var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+        var result = date + "-" + time;
+
+        bill["id_bill"] += result;
+        bill.src = `/runtime/billing/to-pay/${bill.order.hash}.pdf`;
+
+        const localPdfPath = `${localBillingToPayDir}/${bill.order.hash}.pdf`;
+        const localBillJsonPath = `${localBillingToPayDir}/${bill.order.hash}.json`;
+
+        await makePreBillPDF(bill, localPdfPath);
+        writeLocalJson(localBillJsonPath, bill);
+
+        console.log(`Local pre-bill PDF generated: ${localPdfPath}`);
+        console.log(`Local pre-bill JSON saved: ${localBillJsonPath}`);
+
+        return bill;
+    }
+
     const orderURL = obj.activeOrderContainerURL + `order-table-${table}.json`;
     var order = await readFileFromPod(orderURL, session);
 
-    //aggiungo controllo sull'hash dell'ordine
-    var tmpOrder = order;
-    tmpOrder.hash = "";
-    tmpOrder.hash = hashCode(JSON.stringify(tmpOrder));
-
-    if (tmpOrder.hash != order.hash){
+    if (!isOrderHashValid(order)) {
         console.log("Your hash seems to not correspond to the order.");
         return false;
     }
 
-    //make the bill as json
-    var bill = await readFileFromPod(obj.billingFileURL, session);  
+    var bill = await readFileFromPod(obj.billingFileURL, session);
     bill["order"] = order;
-    
+
     var today = new Date();
-    var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+    var date = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
     var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-    var result = date+'-'+time;
+    var result = date + "-" + time;
+
     bill.src = obj.billToPayURL + bill.order.hash + ".pdf";
     bill["id_bill"] += result;
-    var billID = bill["id_bill"];
 
-    // bill = JSON.stringify(bill);
-    // await uploadJSON(bill, obj.billToPayURL, `${billID}.json`, session);
-
-    //insert in bill container   
-    makePreBillPDF(bill);
+    await makePreBillPDF(bill);
     await uploadFileFromPath(`./utils/temp.pdf`, "application/pdf", obj.billToPayURL, bill.order.hash + ".pdf", session);
-    await createResourceSpecificPublicRulesPolicies(obj.billToPayURL+`${bill.order.hash}.pdf`, "billToPay", { read:true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.billToPayURL + `${bill.order.hash}.pdf`, "billToPay", { read: true }, session);
 
     return bill;
 }
 
 async function getPayment(bill, session) {
+    bill = typeof bill === "string" ? JSON.parse(bill) : bill;
 
-    bill = JSON.parse(bill);
+    if (!solidAuthEnabled && useLocalDataFallback && paymentMode === "mock") {
+        ensureLocalRuntime();
+
+        const hash = bill.order.hash;
+        const localOrderPath = getLocalActiveOrderPath(bill.order.table_number);
+
+        bill["payed"] = true;
+        bill["pay_mode"] = "mock blockchain transaction";
+        bill["blockchain_type"] = "local demo";
+        bill["clientWallet"] = "mock-client-wallet";
+        bill["blockchain_transaction_id"] = `mock-tx-${Date.now()}-${hash}`;
+        bill.src = `/runtime/billing/payed/${hash}.pdf`;
+
+        bill["hash_bill"] = "";
+        bill["hash_bill"] = hashCode(JSON.stringify(bill));
+
+        const qrCodeText = `${baseUrl}${bill.src}`;
+        const localQrPath = `${localQrDir}/${hash}.png`;
+        const localPayedPdfPath = `${localBillingPayedDir}/${hash}.pdf`;
+        const localPayedJsonPath = `${localBillingPayedDir}/${hash}.json`;
+        const localPreBillPdfPath = `${localBillingToPayDir}/${hash}.pdf`;
+
+        await qr.toFile(localQrPath, qrCodeText, {
+            errorCorrectionLevel: "H",
+            type: "image/png",
+            quality: 0.95,
+            margin: 3,
+            color: {
+                dark: "#000000ff",
+                light: "#ffffffff",
+            },
+        });
+
+        await makeBillPDF(bill, localPayedPdfPath, localQrPath);
+        writeLocalJson(localPayedJsonPath, bill);
+
+        if (fs.existsSync(localOrderPath)) {
+            fs.unlinkSync(localOrderPath);
+        }
+
+        if (fs.existsSync(localPreBillPdfPath)) {
+            fs.unlinkSync(localPreBillPdfPath);
+        }
+
+        console.log("Mock payment executed.");
+        console.log(`Local paid bill PDF generated: ${localPayedPdfPath}`);
+        console.log(`Local paid bill JSON saved: ${localPayedJsonPath}`);
+
+        return [true, bill.src];
+    }
+
+    bill = typeof bill === "string" ? JSON.parse(bill) : bill;
 
     const done = await checkPayment(bill.order.hash, bill.blockchain_transaction_id);
 
     if (done == false) {
-        // console.log("Payment not executed");
-        return false;
+        return [false, undefined];
     }
 
     console.log("Payment executed");
     await deleteFileFromPod(obj.activeOrderContainerURL + `order-table-${bill.order.table_number}.json`, session);
 
     bill["payed"] = true;
-    bill.src =  obj.billPayedURL + bill.order.hash + ".pdf";
+    bill.src = obj.billPayedURL + bill.order.hash + ".pdf";
     bill["hash_bill"] = hashCode(JSON.stringify(bill));
 
-    //create QRpayed 
-    //create link request to encode
-    var qrCodeText = new URL(obj.billPayedURL + `${bill.order.hash}.pdf`).toString();   
-    // const params = new URLSearchParams({
-    //     method: "GET",
-    //     var2: "value2",
-    //     arr: "foo",
-    //   }).toString();
-    // qrCodeText += params;
+    var qrCodeText = new URL(obj.billPayedURL + `${bill.order.hash}.pdf`).toString();
 
     await qr.toFile(`./utils/img/QR-tables/temp.png`, qrCodeText, {
-        errorCorrectionLevel: 'H',
-        // version: "",
-        type: 'image/png',
+        errorCorrectionLevel: "H",
+        type: "image/png",
         quality: 0.95,
         margin: 3,
         color: {
-         dark: '#000000ff',
-         light: '#ffffffff',
+            dark: "#000000ff",
+            light: "#ffffffff",
         },
-    });   
+    });
 
-    //insert in bill container   
-    makeBillPDF(bill);
-    deleteFileFromPod(obj.billToPayURL + `${bill.order.hash}.pdf`, session);
+    await makeBillPDF(bill);
+    await deleteFileFromPod(obj.billToPayURL + `${bill.order.hash}.pdf`, session);
     await uploadFileFromPath(`./utils/temp.pdf`, "application/pdf", obj.billPayedURL, bill.order.hash + ".pdf", session);
-    await createResourceSpecificPublicRulesPolicies(obj.billPayedURL +`${bill.order.hash}.pdf`, "billPayed", { read:true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.billPayedURL + `${bill.order.hash}.pdf`, "billPayed", { read: true }, session);
 
-    return [true, bill.src];      
+    return [true, bill.src];
 }
 
 async function checkPayment(hashOrder, transactionID){
@@ -326,9 +516,15 @@ async function checkPayment(hashOrder, transactionID){
     };
 }
 
-function makePreBillPDF(bill){
-    let pdfDoc = new PDFDocument({size: 'A4', modifying:false });
-    pdfDoc.pipe(fs.createWriteStream(`./utils/temp.pdf`));
+function makePreBillPDF(bill, outputPath = "./utils/temp.pdf") {
+    return new Promise((resolve, reject) => {
+        let pdfDoc = new PDFDocument({ size: "A4", modifying: false });
+        const stream = fs.createWriteStream(outputPath);
+
+        stream.on("finish", resolve);
+        stream.on("error", reject);
+
+        pdfDoc.pipe(stream);
 
     //Structure    
     pdfDoc
@@ -377,14 +573,21 @@ function makePreBillPDF(bill){
         //.text(bill.order["total"], { oblique : true });
     pdfDoc.moveDown(2);
 
-    pdfDoc.end();
+        pdfDoc.end();
+    });
 }
 
-function makeBillPDF(bill){    
-    
-    //insert in pdf
-    let pdfDoc = new PDFDocument({size: 'A4', modifying:false });
-    pdfDoc.pipe(fs.createWriteStream(`./utils/temp.pdf`));
+function makeBillPDF(bill, outputPath = "./utils/temp.pdf", qrPath = "./utils/img/QR-tables/temp.png") {
+    return new Promise((resolve, reject) => {
+
+        //insert in pdf
+        let pdfDoc = new PDFDocument({ size: "A4", modifying: false });
+        const stream = fs.createWriteStream(outputPath);
+
+        stream.on("finish", resolve);
+        stream.on("error", reject);
+
+        pdfDoc.pipe(stream);
 
     //Structure
     pdfDoc
@@ -473,28 +676,57 @@ function makeBillPDF(bill){
 
     //insert the QR Code within the PDF
     // Fit the image in the dimensions, and center it both horizontally and vertically
-    pdfDoc.image(`./utils/img/QR-tables/temp.png`, {align: 'center', valign: 'center'});
+    pdfDoc.image(qrPath, { align: "center", valign: "center" });
 
-    pdfDoc.end();
+        pdfDoc.end();
+    });
 }
 
 async function updateStore(json, session) {
-    //get the store to update 
-    var store = await readFileFromPod(obj.storeFileURL, session);
+    let store;
 
-    //take the json (the order) and subtract each field to the relative in store
-    Object.keys(json.products).forEach(function(k){
-        store.products[k].quantity_available -= json.products[k].quantity;
-        if (store.products[k].quantity_available <= store.products[k].max_capacity*0.15){
-            var units = store.products[k].max_capacity - store.products[k].quantity_available;
-            store.products[k].quantity_available = store.products[k].max_capacity;
-            console.log("Product: ", store.products[k].name, " refunded of ", units ," units");
+    if (!solidAuthEnabled && useLocalDataFallback) {
+        ensureLocalRuntime();
+        store = readLocalJson(localStoreFilePath);
+    } else {
+        store = await readFileFromPod(obj.storeFileURL, session);
+    }
+
+    Object.keys(json.products).forEach(function(k) {
+        const orderedProduct = json.products[k];
+
+        const storeIndex = store.products.findIndex(function(product) {
+            return product.id === orderedProduct.id;
+        });
+
+        if (storeIndex === -1) {
+            console.warn(`Product not found in store: ${orderedProduct.name}`);
+            return;
+        }
+
+        store.products[storeIndex].quantity_available -= orderedProduct.quantity;
+
+        if (store.products[storeIndex].quantity_available <= store.products[storeIndex].max_capacity * 0.15) {
+            var units = store.products[storeIndex].max_capacity - store.products[storeIndex].quantity_available;
+            store.products[storeIndex].quantity_available = store.products[storeIndex].max_capacity;
+
+            console.log(
+                "Product:",
+                store.products[storeIndex].name,
+                "refunded of",
+                units,
+                "units"
+            );
         }
     });  
 
-    //update the file
-    store = JSON.stringify(store);
-    await uploadJSON(store, obj.storeContainerURL, "store.json", session);
+    if (!solidAuthEnabled && useLocalDataFallback) {
+        writeLocalJson(localStoreFilePath, store);
+        console.log(`Local store updated: ${localStoreFilePath}`);
+        return;
+    }
+
+    await uploadJSON(JSON.stringify(store), obj.storeContainerURL, "store.json", session);
 }
 
 //################################  INITIALIZE SECTION   -------------------------------------

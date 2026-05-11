@@ -1,32 +1,46 @@
 {
-  "name": "dev",
+  "name": "restaurant-solid-blockchain-prototype",
   "version": "1.0.0",
-  "engines": {
-    "node": "14.17.6",
-    "npm": "6.14.15"
-  },
+  "description": "Legacy MSc thesis prototype for a restaurant workflow using Solid Pods and Ethereum payment verification.",
   "main": "restaurant.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node restaurant.js"
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
   },
-  "keywords": [],
+"scripts": {
+  "start": "node restaurant.js",
+  "dev": "nodemon restaurant.js",
+  "init:pods": "node restaurant.js --initialize",
+  "clean:runtime": "rm -rf utils/runtime",
+  "test": "echo \"No automated tests yet\" && exit 0"
+},
+  "keywords": [
+    "solid",
+    "solid-pods",
+    "ethereum",
+    "metamask",
+    "express",
+    "ejs",
+    "msc-thesis",
+    "prototype"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "@inrupt/solid-client": "^1.15.0",
-    "@inrupt/solid-client-authn-node": "^1.11.2",
+    "@inrupt/generate-oidc-token": "^0.1.3",
+    "@inrupt/solid-client": "^1.20.2",
+    "@inrupt/solid-client-authn-node": "^1.11.7",
     "@inrupt/vocab-common-rdf": "^1.0.3",
     "@metamask/legacy-web3": "^2.0.0",
     "commander": "^8.3.0",
+    "dotenv": "^16.4.7",
     "ejs": "^3.1.6",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "filereader": "^0.10.3",
-    "nodemon": "^2.0.14",
+    "nodemon": "^2.0.15",
     "path": "^0.12.7",
     "pdfkit": "^0.13.0",
-    "qrcode": "^1.4.4",
-    "web3": "^1.6.1"
-  },
-  "description": ""
+    "qrcode": "^1.5.0",
+    "web3": "^1.7.1"
+  }
 }

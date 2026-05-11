@@ -1,25 +1,27 @@
 <html>
 
-    <head>
-        <meta charset="UTF-8">
-        <title>Restaurant Web-App</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
-            crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-            integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css"
-            integrity="sha512-YWzhKL2whUzgiheMoBFwW8CKV4qpHQAEuvilg9FAn5VJUDwKZZxkJNuGM4XkWuk94WCrrwslk8yWNGmY1EduTA=="
-            crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <link href='https://fonts.googleapis.com/css?family=Roboto:400,100,300,700' rel='stylesheet' type='text/css'>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>  
-        <!-- <script src="https://unpkg.com/@metamask/legacy-web3@latest/dist/metamask.web3.min.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurant Web-App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css"
+        integrity="sha512-YWzhKL2whUzgiheMoBFwW8CKV4qpHQAEuvilg9FAn5VJUDwKZZxkJNuGM4XkWuk94WCrrwslk8yWNGmY1EduTA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,100,300,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <!-- <script src="https://unpkg.com/@metamask/legacy-web3@latest/dist/metamask.web3.min.js"></script>
          -->
-         <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js" integrity="sha512-5erpERW8MxcHDF7Xea9eBQPiRtxbse70pFcaHJuOhdEBQeAxGQjUwgJbuBDWve+xP/u5IoJbKjyJk50qCnMD7A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>         
-        <link rel="stylesheet" href="/css/style.css" />
-    </head>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"
+        integrity="sha512-5erpERW8MxcHDF7Xea9eBQPiRtxbse70pFcaHJuOhdEBQeAxGQjUwgJbuBDWve+xP/u5IoJbKjyJk50qCnMD7A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+    <link rel="stylesheet" href="/css/style.css" />
+</head>
 
 <body>
 
@@ -30,16 +32,18 @@
     <div class="fixed-top-bar">
         <div id="tableNumberFixedBar">
             <div id="">
-                <h4>Table #<%= tableNumber %></h4>
+                <h4>Table #<%= tableNumber %>
+                </h4>
             </div>
             <div id="">
-                <h5 id="subTotal">SubTot: <%= bill.order.total %></h5>
+                <h5 id="subTotal">SubTot: <%= bill.order.total %>
+                </h5>
             </div>
         </div>
     </div>
 
     <div class="content" id="menu">
-        <iframe id="pdfShow" src="<%= bill.src %>"></iframe>   
+        <iframe id="pdfShow" src="<%= bill.src %>"></iframe>
         <div id="button">
             <script>
                 document.getElementById("button").style.display = "block";
@@ -48,12 +52,27 @@
             </script>
             <div id="buttonContext">
                 <span>
-                    <button class="btn btn-primary rounded-pill" type="submit" id="transactionButton" onclick="payment()">Make Transaction</button>
-                    <!-- <div class="d-flex justify-content-center" id="charging"><div class="lds-roller"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div> -->
                     <div class="d-flex justify-content-center" id="charging"></div>
+
                     <form id="paymentGateway" action="/payment" method="POST">
-                        <input type="hidden" name="bill" id="paymentSending" value="" />
-                        <button class="hidden btn btn-primary rounded-pill" type="submit" id="paymentButton" onclick="check()">Check Payment</button>
+                        <textarea name="bill" id="paymentSending" style="display:none;"><%- JSON.stringify(bill) %></textarea>
+
+                        <% if (paymentMode==="mock" ) { %>
+                            <button class="btn btn-primary rounded-pill" type="submit" id="paymentButton"
+                                onclick="check()">
+                                Complete Mock Payment
+                            </button>
+                            <% } else { %>
+                                <button class="btn btn-primary rounded-pill" type="button" id="transactionButton"
+                                    onclick="payment()">
+                                    Make Transaction
+                                </button>
+
+                                <button class="hidden btn btn-primary rounded-pill" type="submit" id="paymentButton"
+                                    onclick="check()">
+                                    Check Payment
+                                </button>
+                                <% } %>
                     </form>
                 </span>
             </div>
@@ -62,143 +81,38 @@
 
 <script>
     var bill = <%- JSON.stringify(bill) %>;
-    document.getElementById("paymentSending").value = JSON.stringify(bill);      
+    var paymentMode = "<%= paymentMode %>";
 
-    async function payment(){
+    const paymentPayload = document.getElementById("paymentSending");
 
-        let ethValue = bill.order.total / 3919;
-        let wei = parseInt(ethValue * 1000000000000000000);
+    if (paymentPayload) {
+        paymentPayload.value = JSON.stringify(bill);
+    }
 
-        document.getElementById("transactionButton").style.display = "none"; 
-        document.getElementById("charging").classList.add("loader"); 
-        document.getElementById("charging").style.display = "block"; 
-
-        if (window.ethereum) {
-            window.web3 = new Web3(ethereum);
-            // try {       
-            //     var accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-            //     await ethereum.request({
-            //         method: 'eth_sendTransaction',
-            //         params: [
-            //             {
-            //             from: accounts[0],
-            //             to: '<%= bill.restaurantWallet %>',
-            //             value: wei.toString(16),
-            //             // data: web3.toHex(bill.order.hash)
-            //             },
-            //         ],
-            //     })
-            //     .then((txHash) => {
-            //         console.log('Payment successful', txHash);
-            //         bill.blockchain_transaction_id = txHash;
-            //         document.getElementById("paymentSending").value = JSON.stringify(bill);
-            //     })
-            //     .catch((error) => {
-            //        console.log(error);
-            //     });
-            // } catch (err) {
-            //     console.log('User denied account access', err);
-            // }
-            try {
-                await ethereum.enable();
-                var accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-                var ERC20ABI = [
-                    {
-                        "inputs": [],
-                        "stateMutability": "nonpayable",
-                        "type": "constructor"
-                    },
-                    {
-                        "inputs": [
-                            {
-                                "internalType": "uint256",
-                                "name": "amount",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "string",
-                                "name": "_orderHash",
-                                "type": "string"
-                            },
-                            {
-                                "internalType": "string",
-                                "name": "_data",
-                                "type": "string"
-                            }
-                        ],
-                        "name": "forwardPayment",
-                        "outputs": [],
-                        "stateMutability": "payable",
-                        "type": "function"
-                    },
-                    {
-                        "inputs": [
-                            {
-                                "internalType": "string",
-                                "name": "_orderHash",
-                                "type": "string"
-                            }
-                        ],
-                        "name": "getData",
-                        "outputs": [
-                            {
-                                "internalType": "string",
-                                "name": "data",
-                                "type": "string"
-                            }
-                        ],
-                        "stateMutability": "view",
-                        "type": "function"
-                    },
-                    {
-                        "stateMutability": "payable",
-                        "type": "receive"
-                    }
-                ];
-                var instanceContract = new web3.eth.Contract(ERC20ABI, "0x396DC917E64909Dfd3081FE1Ac461c14b87Dc6a8");
-                await instanceContract.methods
-                    .forwardPayment(wei, bill.order.hash.toString(), bill.src.toString())
-                    .send({ from: accounts[0], value: wei }, function (err, res) {
-                        if (err) {
-                            console.log("An error occured", err)
-                            return
-                        }
-                        console.log('Payment successful', res);
-                        console.log(bill.order.hash);
-                        bill.blockchain_transaction_id = res;
-                        document.getElementById("paymentSending").value = JSON.stringify(bill);
-                    })   
-            } catch (error) {
-                console.log(error);
-            }
-        } else if (window.web3) {
-            window.web3 = new Web3(web3.currentProvider);
-            web3.eth.sendTransaction({
-                to: "<%= bill.restaurantWallet %>",
-                value: wei.toString(16)
-            }, (err, transactionId) => {
-                if  (err) {
-                    console.log('Payment failed', err)
-                } else {
-                    console.log('Payment successful', transactionId)
-                    bill.blockchain_transaction_id = transactionId;
-                    document.getElementById("paymentSending").value = JSON.stringify(bill);
-                }
-            });
-        } else {
-            console.log('No Metamask (or other Web3 Provider) installed');
+    async function payment() {
+        if (paymentMode === "mock") {
+            return;
         }
 
-        document.getElementById("charging").classList.remove("loader");  
-        document.getElementById("charging").style.display = "none";        
-        document.getElementById("paymentButton").classList.remove("hidden");   
-
+        alert("Blockchain payment mode is not configured yet. Use PAYMENT_MODE=mock for the local demo.");
     }
-    
-    function check(){
-        document.getElementById("paymentButton").style.display = "none"; 
-        document.getElementById("charging").classList.add("loader"); 
-        document.getElementById("charging").style.display = "block"; 
+
+    function check() {
+        const paymentButton = document.getElementById("paymentButton");
+        const charging = document.getElementById("charging");
+
+        if (paymentPayload) {
+            paymentPayload.value = JSON.stringify(bill);
+        }
+
+        if (paymentButton) {
+            paymentButton.style.display = "none";
+        }
+
+        if (charging) {
+            charging.classList.add("loader");
+            charging.style.display = "block";
+        }
     }
 </script>
 
