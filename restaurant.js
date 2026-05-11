@@ -9,8 +9,12 @@ const {
   port,
   baseUrl,
   tableCount,
+  solid,
+  ethereum,
+  useLocalDataFallback,
   solidAuthEnabled,
   paymentMode,
+  allowPodReset,
   adminToken,
   restaurantToken
 } = require("./src/config");
@@ -37,13 +41,91 @@ const app = express();
 
 //-----------## Initialization Solid Pod(s) - (re)start the service as predifined
 program
-  .option("-i, --initialize", "Initialize Restaurant service and Pods.");
+  .option("-i, --initialize", "Initialize Restaurant service and Pods.")
+  .option("--solid-plan", "Print the expected Solid Pod structure without modifying anything.");
 
 program.parse(process.argv);
 
 const options = program.opts();
 
+function printSolidPlan() {
+  console.log("");
+  console.log("Solid Pod configuration plan");
+  console.log("============================");
+  console.log("");
+
+  console.log("Execution mode:");
+  console.log(`- USE_LOCAL_DATA_FALLBACK: ${useLocalDataFallback}`);
+  console.log(`- SOLID_AUTH_ENABLED: ${solidAuthEnabled}`);
+  console.log(`- PAYMENT_MODE: ${paymentMode}`);
+  console.log(`- ALLOW_POD_RESET: ${allowPodReset}`);
+  console.log("");
+
+  console.log("Application:");
+  console.log(`- PORT: ${port}`);
+  console.log(`- BASE_URL: ${baseUrl}`);
+  console.log(`- TABLE_COUNT: ${tableCount}`);
+  console.log("");
+
+  console.log("Solid target:");
+  console.log(`- Root context: ${solid.rootContext}`);
+  console.log(`- Test number: ${solid.testNumber}`);
+  console.log(`- Admin root: ${solid.adminRoot}`);
+  console.log(`- Test root: ${solid.root}`);
+  console.log(`- ACP resource: ${solid.acp}`);
+  console.log("");
+
+  console.log("Expected Solid containers:");
+  console.log(`- Store: ${solid.storeContainerURL}`);
+  console.log(`- Active orders: ${solid.activeOrderContainerURL}`);
+  console.log(`- Bills to pay: ${solid.billToPayURL}`);
+  console.log(`- Paid bills: ${solid.billPayedURL}`);
+  console.log("");
+
+  console.log("Expected Solid files:");
+  console.log(`- Store JSON: ${solid.storeFileURL}`);
+  console.log(`- Order template JSON: ${solid.activeOrderFileURL}`);
+  console.log(`- Billing template JSON: ${solid.billingFileURL}`);
+  console.log("");
+
+  console.log("Local source files to upload during initialization:");
+  console.log(`- Store fixture: ${solid.storeFilePath}`);
+  console.log(`- Order template: ${solid.activeOrderFilePath}`);
+  console.log(`- Billing template: ${solid.billingFilePath}`);
+  console.log("- Images: ./utils/img/*.jpg");
+  console.log("");
+
+  console.log("Configured WebIDs:");
+  console.log(`- Restaurant Inrupt WebID: ${solid.restaurantInruptWebID || "(not set)"}`);
+  console.log(`- Restaurant WebID: ${solid.restaurantWebID || "(not set)"}`);
+  console.log(`- CEO WebID: ${solid.CEOWebID || "(not set)"}`);
+  console.log(`- Authority WebID: ${solid.authorityWebID || "(not set)"}`);
+  console.log(`- ERP WebID: ${solid.erpWebID || "(not set)"}`);
+  console.log(`- Admin WebID: ${solid.adminWebID || "(not set)"}`);
+  console.log("");
+
+  console.log("Ethereum configuration:");
+  console.log(`- Network: ${ethereum.network || "(not set)"}`);
+  console.log(`- RPC URL configured: ${Boolean(ethereum.rpcUrl)}`);
+  console.log(`- Smart contract configured: ${Boolean(ethereum.smartContractAddress)}`);
+  console.log(`- Restaurant wallet configured: ${Boolean(ethereum.restaurantWalletAddress)}`);
+  console.log("");
+
+  console.log("Safety notes:");
+  console.log("- This command does not modify the Pod.");
+  console.log("- npm run init:pods may delete/recreate the configured Solid test container.");
+  console.log("- Keep ALLOW_POD_RESET=false unless you intentionally want to reset the configured Pod path.");
+  console.log("");
+}
+
 const isInitCommand = options.initialize;
+
+const isSolidPlanCommand = options.solidPlan;
+
+if (isSolidPlanCommand) {
+  printSolidPlan();
+  process.exit(0);
+}
 
 if (isInitCommand) {
   console.log("Initializing Solid Pod context...");
@@ -235,7 +317,7 @@ app.get('/end', function(req, res, next) {
 // }
 
 // portRange.forEach(function(port) {
-if (!isInitCommand) {
+if (!isInitCommand && !isSolidPlanCommand) {
   app.listen(port, function () {
     console.log(`listening on ${port}`);
   });

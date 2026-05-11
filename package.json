@@ -11,6 +11,7 @@
   "start": "node restaurant.js",
   "dev": "nodemon restaurant.js",
   "init:pods": "node restaurant.js --initialize",
+  "solid:plan": "node restaurant.js --solid-plan",
   "clean:runtime": "rm -rf utils/runtime",
   "test": "echo \"No automated tests yet\" && exit 0"
 },
