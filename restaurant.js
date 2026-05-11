@@ -43,8 +43,11 @@ program.parse(process.argv);
 
 const options = program.opts();
 
-if (options.initialize) {
+const isInitCommand = options.initialize;
+
+if (isInitCommand) {
   console.log("Initializing Solid Pod context...");
+
   initialize(adminToken)
     .then(() => {
       console.log("Solid Pod initialization completed.");
@@ -52,7 +55,7 @@ if (options.initialize) {
     })
     .catch((error) => {
       console.error("Solid Pod initialization failed:");
-      console.error(error);
+      console.error(error.message);
       process.exit(1);
     });
 }
@@ -232,7 +235,9 @@ app.get('/end', function(req, res, next) {
 // }
 
 // portRange.forEach(function(port) {
-  app.listen(port, () => {
+if (!isInitCommand) {
+  app.listen(port, function () {
     console.log(`listening on ${port}`);
   });
+}
 // });
