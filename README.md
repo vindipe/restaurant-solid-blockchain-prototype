@@ -342,6 +342,12 @@ However, the Solid flow should be reviewed before use. In particular:
 - verify refresh-token credentials
 - avoid pointing initialization to data that should not be deleted or overwritten
 
+### Legacy Pod note
+
+The original repository referenced an old Inrupt Pod path used during the MSc thesis prototype. That historical Pod configuration is no longer assumed to be valid.
+
+If `npm run solid:probe` returns `text/html` responses redirected to an Inrupt profile or landing page, the app is not receiving the expected Solid resources. In that case, create a fresh test Pod context and update `.env` with the new Pod base URL and WebIDs.
+
 ## Payment modes
 
 The current recommended payment mode is:

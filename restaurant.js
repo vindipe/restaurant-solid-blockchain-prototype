@@ -136,11 +136,13 @@ async function probeUrl(label, url, expectedContentType = "") {
 
     let statusLabel = `${response.status} ${response.statusText}`;
 
-    if (expectedContentType && !contentType.includes(expectedContentType)) {
-      statusLabel += ` | unexpected content-type: ${contentType}`;
-    } else {
-      statusLabel += ` | content-type: ${contentType}`;
-    }
+if (expectedContentType && !contentType.includes(expectedContentType)) {
+  statusLabel += ` | NOT OK: expected ${expectedContentType}, received ${contentType}`;
+} else if (contentType.includes("text/html")) {
+  statusLabel += ` | WARNING: received HTML page, not a Solid data resource`;
+} else {
+  statusLabel += ` | content-type: ${contentType}`;
+}
 
     if (finalUrl !== url) {
       statusLabel += ` | redirected to: ${finalUrl}`;
