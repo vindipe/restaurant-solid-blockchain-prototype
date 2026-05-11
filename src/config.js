@@ -94,6 +94,7 @@ const erpToken = {};
 const useLocalDataFallback = env("USE_LOCAL_DATA_FALLBACK", "true") === "true";
 const solidAuthEnabled = env("SOLID_AUTH_ENABLED", "false") === "true";
 const paymentMode = env("PAYMENT_MODE", "mock");
+const allowPodReset = env("ALLOW_POD_RESET", "false") === "true";
 
 module.exports = {
   port,
@@ -104,6 +105,7 @@ module.exports = {
   useLocalDataFallback,
   solidAuthEnabled,
   paymentMode,
+  allowPodReset,
   adminToken,
   restaurantToken,
   authorityToken,

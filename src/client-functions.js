@@ -33,7 +33,8 @@ const {
     baseUrl,
     useLocalDataFallback,
     solidAuthEnabled,
-    paymentMode
+    paymentMode,
+    allowPodReset
 } = require("./config");
 
 const obj = solid;
@@ -663,16 +664,16 @@ async function createStoreSection(session) {
     
 
     //set access public to retrieve externally the image
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "water.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "pasta.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "coffee.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "pizza.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "hamburger.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "smoked-salmon.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "bread.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "fruits.jpg", "img", { read:true }, session);
-    createResourceSpecificPublicRulesPolicies(obj.storeFileURL, "store", { read:true }, session);
-    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "beef.jpg", "img", { read:true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "water.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "pasta.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "coffee.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "pizza.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "hamburger.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "smoked-salmon.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "bread.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "fruits.jpg", "img", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeFileURL, "store", { read: true }, session);
+    await createResourceSpecificPublicRulesPolicies(obj.storeContainerURL + "beef.jpg", "img", { read: true }, session);
     
     //set access for restaurant as:
     //await createResourceSpecificRulesPolicies(obj.storeFileURL, "menu", { read:true, write:true }, obj.restaurantWebID, session);
@@ -732,27 +733,63 @@ async function createActiveOrderSection(session) {
 }
 
 async function initialize(token) {
-    //login as admin 
+    console.log("Solid Pod initialization requested.");
+    console.log("Target root container:", obj.root);
+    console.log("Target admin root:", obj.adminRoot);
+    console.log("ACP resource:", obj.acp);
+
+    if (!allowPodReset) {
+        throw new Error(
+            "Refusing to initialize Solid Pod because ALLOW_POD_RESET is not true. " +
+            "This command may delete and recreate the configured test container. " +
+            "Set ALLOW_POD_RESET=true in .env only when you are sure."
+        );
+    }
+
+    if (!token.refreshToken || !token.clientId || !token.clientSecret || !token.provider) {
+        throw new Error(
+            "Missing admin Solid credentials. Check ADMIN_SOLID_PROVIDER, " +
+            "ADMIN_SOLID_REFRESH_TOKEN, ADMIN_SOLID_CLIENT_ID and ADMIN_SOLID_CLIENT_SECRET in .env."
+        );
+    }
+
+    if (!obj.adminRoot || !obj.root || !obj.acp) {
+        throw new Error(
+            "Missing Solid target URLs. Check ADMIN_POD_BASE_URL, SOLID_ROOT_CONTEXT and SOLID_TEST_NUMBER in .env."
+        );
+    }
+
+    console.log("Logging in as Solid admin...");
     const session = await login("Admin-", token);
 
+    if (!session || !session.info || !session.info.isLoggedIn) {
+        throw new Error("Solid admin login failed.");
+    }
+
+    console.log("Logged in as:", session.info.webId);
+
+    console.log("Creating ACP dataset...");
     await createDatasetACP(obj.acp, session);
 
-    if(session.info.webId != obj.CEOWebID){
+    if (session.info.webId !== obj.CEOWebID && obj.CEOWebID) {
+        console.log("Granting CEO access to admin root:", obj.CEOWebID);
+
         await createAgentRuleACP(obj.acp, obj.CEOWebID, "restaurantCEO", "adminRoot", session);
-        await createPolicyACP(obj.acp, { read:true, write:true, append:true }, "restaurantCEO", "adminRoot", session);
+        await createPolicyACP(obj.acp, { read: true, write: true, append: true }, "restaurantCEO", "adminRoot", session);
         await createMemberRulesPolicies(obj.adminRoot, obj.acp, "restaurantCEO", "adminRoot", session);
     }
 
-    //!!INFO: TO DELETE WE NEED TO HAVE AN EMPTY CONTAINER
-    //AT THE MOMENT THIS CAN BE DONE BY MANUAL DELETION
+    console.log("Resetting target root container:", obj.root);
+    console.log("WARNING: this may delete the configured test container.");
+
     await deleteContainerFromPod(obj.root, session);
     await createContainer(obj.root, session);
 
-    createStoreSection(session);
-    createBillingSection(session);
+    await createStoreSection(session);
+    await createBillingSection(session);
     await createActiveOrderSection(session);
 
-    //logout(session);
+    console.log("Solid Pod initialization completed.");
 }
 
 
