@@ -16,7 +16,8 @@
   "solid:probe:auth": "node restaurant.js --solid-probe-auth",
   "clean:runtime": "rm -rf utils/runtime",
   "doctor": "node scripts/doctor.js",
-  "test": "echo \"No automated tests yet\" && exit 0"
+  "test:local-flow": "node scripts/test-local-flow.js",
+  "test": "npm run doctor && npm run test:local-flow"
 },
   "keywords": [
     "solid",
